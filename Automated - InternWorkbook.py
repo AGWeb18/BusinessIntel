@@ -39,14 +39,15 @@ intern_activity = pd.concat([only_intern_df, intern_procedure_codes],axis=1, joi
 intern_activity = intern_activity[["Intern1","Intern2","Date","Procedure"]]
 
 
-#	Create key to align the records
-intern_activity["key"] = intern_activity["Date"] + intern_activity["Intern1"] + intern_activity["Intern2"]
-
 
 #	Dedupe the dataframe, keep 1 item per 'group'
 intern_activity_deduped = intern_activity.drop_duplicates(subset=["Date","Intern1", "Intern2"])
 
-print(intern_activity_deduped.head())
+#	Create key to align the records
+intern_activity["key"] = intern_activity["Date"] + intern_activity["Intern1"] + intern_activity["Intern2"]
+
+
+print(intern_activity.head())
 
 #	Create Regex to remove all non-alpha numeric for key creation
 pattern = re.compile(r'[\W_]+')
@@ -56,7 +57,6 @@ intern_activity_deduped["NP"] = ""
 intern_activity_deduped["SUBS"] = ""
 intern_activity_deduped["SMT"] = ""
 intern_activity_deduped["EXT-SMT"] = ""
-intern_activity_deduped["key"] = ""
 
 
 #	Reset index to make working with df easier
