@@ -24,6 +24,7 @@ raw_file = pd.read_csv(r"C:\Users\ARidding\Documents\Benchmarks\BarComparison\Ju
 #   Remove unnecessary columns
 raw_file = raw_file[["Date", "Provider", "Procedure"]]
 
+
 #   Keep rows with a '/'.
 #	Split off procedure/date information
 intern_data = raw_file[raw_file.Provider.str.contains("/", na=False)]
@@ -34,29 +35,28 @@ only_intern_df = intern_data["Provider"].str.split('/', expand=True)
 only_intern_df = only_intern_df[[1,2]] #    Drop the clinician, keep interns
 only_intern_df.columns = ["Intern1", "Intern2"] #	Rename column
 
+
 #   Attach intern columns back to the dataframe
 intern_activity = pd.concat([only_intern_df, intern_procedure_codes],axis=1, join='inner')
 intern_activity = intern_activity[["Intern1","Intern2","Date","Procedure"]]
 
+#	Fill NA's with "" in order to concatenate
+intern_activity.Intern2.fillna(value="", inplace=True)
 
+#	Create KEY column
+intern_activity["Lookup"] = intern_activity.Date + intern_activity.Intern1 + intern_activity.Intern2
+intern_activity.Lookup = intern_activity.Lookup.str.replace(r'\W', '')
 
 #	Dedupe the dataframe, keep 1 item per 'group'
-intern_activity_deduped = intern_activity.drop_duplicates(subset=["Date","Intern1", "Intern2"])
-
-#	Create key to align the records
-intern_activity["key"] = intern_activity["Date"] + intern_activity["Intern1"] + intern_activity["Intern2"]
+intern_activity_deduped = intern_activity.drop_duplicates(subset=["Date","Intern1", "Intern2","Lookup"])
 
 
-print(intern_activity.head())
-
-#	Create Regex to remove all non-alpha numeric for key creation
-pattern = re.compile(r'[\W_]+')
 
 #	Add empty columns for new patient, subs, smt and external smt
-intern_activity_deduped["NP"] = ""
-intern_activity_deduped["SUBS"] = ""
-intern_activity_deduped["SMT"] = ""
-intern_activity_deduped["EXT-SMT"] = ""
+#intern_activity_deduped["NP"] = ""
+#intern_activity_deduped["SUBS"] = ""
+#intern_activity_deduped["SMT"] = ""
+#intern_activity_deduped["EXT-SMT"] = ""
 
 
 #	Reset index to make working with df easier
@@ -83,24 +83,13 @@ procedure_code_mapping = {"6100 NC":"NP", "6100 Reeval - NP credit":"NP", "Bront
 "ADJ TMJ":"EXT-SMT","ADJ WRT":"EXT-SMT","AJD HIP":"EXT-SMT"}
 #########################################################################################################################
 
-#	Instantiate empty dataframe for the count exercise
+
 
 #	Groupby the date, and both interns. 
-#intern_activity_group = intern_activity.groupby(by=["Date","Intern1","Intern2"])
-
-#def create_key(item):
-#	concat_item = item.iloc[2,0] + value["Intern1"].iloc[0] + value["Intern2"].iloc[0] #	Create key to use as a 'look-up'
-#	value_concat= pattern.sub('', value_concat)
-	
-
-
+intern_activity_group = intern_activity.groupby(by=["Date","Intern1","Intern2"])
 
 
 #for key, value  in intern_activity_group:
-#	value_concat = value["Date"].iloc[0] + value["Intern1"].iloc[0] + value["Intern2"].iloc[0] #	Create key to use as a 'look-up'
-#	value_concat= pattern.sub('', value_concat)
-#	value["key"] = value_concat
-#	print(value.head())
 #	s_metrics = pd.Series(value["Procedure"].map(procedure_code_mapping).unique())
 		
 
