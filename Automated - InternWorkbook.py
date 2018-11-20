@@ -16,8 +16,9 @@
 
 #   Import required libraries
 import pandas as pd
+import re
 
-pd.set_option('display.max_columns', 10) #	Set to 10 columns viewable
+pd.set_option('display.max_columns', 20) #	Set to 10 columns viewable
 
 #   Read the csv into a dataframe
 raw_file = pd.read_csv(r"\\citrix3\OscarFileStorage\Anthony Reports\Benchmark - Reports\July2018-ProviderDetailReport.csv")
@@ -47,6 +48,8 @@ intern_activity.Intern3.fillna(value="", inplace=True)
 
 intern_activity.columns = ["Intern1", "Intern2", "Intern3","InvoiceID","Procedure","Date"]
 
+
+
 ########################################################################################################################
 #	Mapping procedure codes to their meaning. 
 procedure_code_mapping = {"6100 NC":"NP", "6100 Reeval - NP credit":"NP", "Bronte Reeval NP credit":"NP", 
@@ -68,32 +71,62 @@ procedure_code_mapping = {"6100 NC":"NP", "6100 Reeval - NP credit":"NP", "Bront
 "ADJ TMJ":"EXT-SMT","ADJ WRT":"EXT-SMT","AJD HIP":"EXT-SMT"}
 #########################################################################################################################
 
+
+#########################################################################################################################
+#			CODES FOR STF or STD
+
+std_stf_procedure_codes = {"FAC INIT":"STD","FAC NC":"STD","FAC REEVAL":"STD",
+"FAC SUB":"STD","FR Sherb INIT STD":"STD","FR Sherb ST":"STD","STD INIT":"STD","ST MRT":"STD",
+}
+
+#########################################################################################################################
+
 #	Create the de-duped Interns Workbook df
-master_df = intern_activity.drop_duplicates(subset=["Intern1","Intern2","Intern3"])
+master_df = intern_activity.drop_duplicates(subset=["InvoiceID"])
+
 
 
 #	Add empty columns for new patient, subs, smt and external smt
-master_df["NSTD NP"] = ""
-master_df["STD NP"] = ""
-master_df["NSTD SUBS"] = ""
-master_df["STD SUBS"] = ""
-master_df["NSTD SMT"] = ""
-master_df["NSTD SMT"] = ""
-master_df["NSTD EXT-SMT"] = ""
-master_df["STD EXT-SMT"] = ""
+master_df.loc["NSTD NP"] = ""
+master_df.loc["STD NP"] = ""
+master_df.loc["NSTD SUBS"] = ""
+master_df.loc["STD SUBS"] = ""
+master_df.loc["NSTD SMT"] = ""
+master_df.loc["NSTD SMT"] = ""
+master_df.loc["NSTD EXT-SMT"] = ""
+master_df.loc["STD EXT-SMT"] = ""
 
 
+intern_activity["MappedCodes"] = intern_activity.Procedure.map(procedure_code_mapping)
+intern_activity["STDStatus"] = intern_activity.Procedure.map(std_stf_procedure_codes)
 
-###########################################################################################
-#	Create function to count the number of important metrics for each data point
-#def count_metrics(df_groupby):
-	#	de-dupe the procedure codes
-	#	map the Procedure to it's corresponding value
+
 	#	count 1 of each of the important metrics per group if present. 
-	#	place each important metrics into their own columns. 
-###########################################################################################
+
 
 activity_group = intern_activity.groupby(["InvoiceID"])
 
 for key, val in activity_group:
-	if val["Procedure"].contains 
+	#	Set important variables
+	OscarCodes = val.MappedCodes.unique()
+	STDSTATUS_ = val.STDStatus.unique()
+	inv = int(val.InvoiceID.unique())
+	sub_df = master_df[master_df["InvoiceID"] == inv]
+
+
+	if "STD" in STDSTATUS_:
+		if "NP" in OscarCodes:
+			sub_df.loc["STD NP"] = 1
+		elif "SUB" in OscarCodes:
+			sub_df.loc["STD SUB"] =1
+		elif "SMT" in OscarCodes:
+			sub_df.loc["STD SMT"] =1
+	else:
+		if "NP" in OscarCodes:
+			sub_df.loc["NSTD NP"] = 1
+		elif "SUB" in OscarCodes:
+			sub_df.loc["NSTD SUB"] =1
+		elif "SMT" in OscarCodes:
+			sub_df.loc["NSTD SMT"] =1
+
+print(master_df)
