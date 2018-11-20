@@ -10,57 +10,42 @@
 #	Two dataframes - one used for counting, one used for storing
 #	counting = full dataset, groupped ---- intern_activity ------
 #	storing = deduped df, with extra columns ---intern_activity_deduped---
+
+######################### PRE-PROCESSING ##############################
 #######################################################################
 
 #   Import required libraries
 import pandas as pd
-import re, string
 
-pd.set_option('display.max_columns', 10) #	Set to 10 columns
+pd.set_option('display.max_columns', 10) #	Set to 10 columns viewable
 
 #   Read the csv into a dataframe
-raw_file = pd.read_csv(r"C:\Users\ARidding\Documents\Benchmarks\BarComparison\June2018-ProviderDetailReport.csv")
+raw_file = pd.read_csv(r"\\citrix3\OscarFileStorage\Anthony Reports\Benchmark - Reports\July2018-ProviderDetailReport.csv")
 
 #   Remove unnecessary columns
-raw_file = raw_file[["Date", "Provider", "Procedure"]]
+raw_file = raw_file[["Invoice ID", "Date", "Provider", "Procedure"]]
 
-
-#   Keep rows with a '/'.
-#	Split off procedure/date information
+#   Keep rows with a '/' (those with an intern)
+#	Split off procedure/date information into new df
 intern_data = raw_file[raw_file.Provider.str.contains("/", na=False)]
-intern_procedure_codes = raw_file[["Procedure", "Date"]]
 
-#   Split interns into multiple columns
+#	name the cols of the procedure/date df. 
+intern_procedure_codes = raw_file[["Invoice ID", "Procedure", "Date"]]
+
+#   Split interns into multiple columns by "/"
 only_intern_df = intern_data["Provider"].str.split('/', expand=True)
-only_intern_df = only_intern_df[[1,2]] #    Drop the clinician, keep interns
-only_intern_df.columns = ["Intern1", "Intern2"] #	Rename column
 
+only_intern_df = only_intern_df[[1,2, 3]] #    Drop the clinician, keep interns
+only_intern_df.columns = ["Intern1", "Intern2", "Intern3"] #	Rename column
 
-#   Attach intern columns back to the dataframe
+#   Attach intern columns back to the date / procedure df
 intern_activity = pd.concat([only_intern_df, intern_procedure_codes],axis=1, join='inner')
-intern_activity = intern_activity[["Intern1","Intern2","Date","Procedure"]]
 
 #	Fill NA's with "" in order to concatenate
 intern_activity.Intern2.fillna(value="", inplace=True)
+intern_activity.Intern3.fillna(value="", inplace=True)
 
-#	Create KEY column
-intern_activity["Lookup"] = intern_activity.Date + intern_activity.Intern1 + intern_activity.Intern2
-intern_activity.Lookup = intern_activity.Lookup.str.replace(r'\W', '')
-
-#	Dedupe the dataframe, keep 1 item per 'group'
-intern_activity_deduped = intern_activity.drop_duplicates(subset=["Date","Intern1", "Intern2","Lookup"])
-
-
-
-#	Add empty columns for new patient, subs, smt and external smt
-#intern_activity_deduped["NP"] = ""
-#intern_activity_deduped["SUBS"] = ""
-#intern_activity_deduped["SMT"] = ""
-#intern_activity_deduped["EXT-SMT"] = ""
-
-
-#	Reset index to make working with df easier
-#intern_activity_deduped.reset_index(drop=True, inplace=True)
+intern_activity.columns = ["Intern1", "Intern2", "Intern3","InvoiceID","Procedure","Date"]
 
 ########################################################################################################################
 #	Mapping procedure codes to their meaning. 
@@ -83,15 +68,21 @@ procedure_code_mapping = {"6100 NC":"NP", "6100 Reeval - NP credit":"NP", "Bront
 "ADJ TMJ":"EXT-SMT","ADJ WRT":"EXT-SMT","AJD HIP":"EXT-SMT"}
 #########################################################################################################################
 
+#	Create the de-duped Interns Workbook df
+master_df = intern_activity.drop_duplicates(subset=["Intern1","Intern2","Intern3"])
 
 
-#	Groupby the date, and both interns. 
-intern_activity_group = intern_activity.groupby(by=["Date","Intern1","Intern2"])
+#	Add empty columns for new patient, subs, smt and external smt
+master_df["NSTD NP"] = ""
+master_df["STD NP"] = ""
+master_df["NSTD SUBS"] = ""
+master_df["STD SUBS"] = ""
+master_df["NSTD SMT"] = ""
+master_df["NSTD SMT"] = ""
+master_df["NSTD EXT-SMT"] = ""
+master_df["STD EXT-SMT"] = ""
 
 
-#for key, value  in intern_activity_group:
-#	s_metrics = pd.Series(value["Procedure"].map(procedure_code_mapping).unique())
-		
 
 ###########################################################################################
 #	Create function to count the number of important metrics for each data point
@@ -102,7 +93,7 @@ intern_activity_group = intern_activity.groupby(by=["Date","Intern1","Intern2"])
 	#	place each important metrics into their own columns. 
 ###########################################################################################
 
+activity_group = intern_activity.groupby(["InvoiceID"])
 
-#	Produce a unique list of interns across the entire month
-#l_of_interns = pd.concat([only_intern_df["Intern1"], only_intern_df['Intern2']]) #	List of interns
-
+for key, val in activity_group:
+	if val["Procedure"].contains 
