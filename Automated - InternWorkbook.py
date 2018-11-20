@@ -68,8 +68,17 @@ procedure_code_mapping = {"6100 NC":"NP", "6100 Reeval - NP credit":"NP", "Bront
 "ADJ TMJ":"EXT-SMT","ADJ WRT":"EXT-SMT","AJD HIP":"EXT-SMT"}
 #########################################################################################################################
 
+
+#########################################################################################################################
+#			CODES FOR STF or STD
+
+std_stf_procedure_codes = {"FAC INIT":"STD","FAC NC":"STD","FAC REEVAL":"STD","FAC SUB":"STD","FR Sherb INIT STD":"STD","FR Sherb ST":"STD","STD INIT":"STD","ST MRT":"STD"}
+
+#########################################################################################################################
+
+
 #	Create the de-duped Interns Workbook df
-master_df = intern_activity.drop_duplicates(subset=["Intern1","Intern2","Intern3"])
+master_df = intern_activity.drop_duplicates(subset=["InvoiceID"])
 
 
 #	Add empty columns for new patient, subs, smt and external smt
@@ -93,7 +102,12 @@ master_df["STD EXT-SMT"] = ""
 	#	place each important metrics into their own columns. 
 ###########################################################################################
 
+
+intern_activity["MappedCodes"] = intern_activity.Procedure.map(procedure_code_mapping)
+intern_activity["STDStatus"] = intern_activity.Procedure.map(std_stf_procedure_codes)
+
 activity_group = intern_activity.groupby(["InvoiceID"])
 
 for key, val in activity_group:
-	if val["Procedure"].contains 
+	master_df_key = val["InvoiceID"]
+	print(val.head())
