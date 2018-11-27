@@ -17,6 +17,15 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font
 from openpyxl import Workbook
 from openpyxl.chart.data_source import NumDataSource, NumData, NumVal, NumRef
+from openpyxl.styles import Alignment
+
+
+pd.set_option('display.max_columns', 10)
+
+def clean_HTML(text):
+    soup = BeautifulSoup(text, "html.parser")
+    get_soup = soup.get_text()
+    return get_soup 
 
 ######################################################################################
 #       1                                                                            #
@@ -53,25 +62,20 @@ clean_pivot["Global Mean"] = glo_pivot
 
 #   Work on parsing the comments out by clinician and separating into their own worksheets
 clean_data = data.copy()
-
 clean_data = clean_data[['Evaluation_Name',"Question_ID",'Question',"Clinician_AD_ID","Comments"]]
 
-#   Create an empty list to append to 
-clean_question = []
 
-for i in range(0, len(clean_data["Question"])-1):
-    #   For each item in the column "Question" we need to strip
-    #   The HTML tags the surround the text.
-    #   Here we will use BeautifulSoup4 to get_text and append to clean_questions
-    text = clean_data.Question[i]
-    soup = BeautifulSoup(text, "html.parser")
-    clean_question.append(soup.get_text())
+
+
+
+clean_question = clean_data["Question"].apply(clean_HTML)
+
     
-#   Keep all columns except the last column
+# #   Keep all columns except the last column
 clean_data = clean_data.iloc[:-1,:]
 
-#   Create a new column "Question" with the clean questions we just stripped
-#   Create a variable with the unique question list -- quest_uni
+# #   Create a new column "Question" with the clean questions we just stripped
+# #   Create a variable with the unique question list -- quest_uni
 clean_data["Clean_Question"] = clean_question
 
 
@@ -86,26 +90,23 @@ quest_uni = d_quest.Clean_Question.unique()
 
 mask = np.ones(len(quest_uni),dtype=bool)
 
-#######################################################################################################
-#       2                                                                                             #
-#       The two "Comment" based questions (non-numeric) will need to be removed from the chart        #
-#       Starting from 0, COUNT THE NUMBER OF THESE TWO QUESTIONS AND PLACE THEM IN THE BRACKETS BELOW #
-#######################################################################################################
+# #######################################################################################################
+# #       2                                                                                             #
+# #       The two "Comment" based questions (non-numeric) will need to be removed from the chart        #
+# #       Starting from 0, COUNT THE NUMBER OF THESE TWO QUESTIONS AND PLACE THEM IN THE BRACKETS BELOW #
+# #######################################################################################################
 mask[[0,1]] = False                                                                                #
-#######################################################################################################
-
-
-
+# #######################################################################################################
 
 question_result = quest_uni[mask]
 question_res = pd.Series(question_result)
 
-###########################################################################
-#    3                                                                    #
-#    CONFIRM THAT THE ORDER OF THE QUESTIONS ARE CORRECT IN THE GRAPH     #
-###########################################################################
+# ###########################################################################
+# #    3                                                                    #
+# #    CONFIRM THAT THE ORDER OF THE QUESTIONS ARE CORRECT IN THE GRAPH     #
+# ###########################################################################
 l_order = [0, 13, 4, 10, 11, 15, 12, 14, 3 ,8, 2, 7, 6, 1, 9, 5]                        #
-###########################################################################
+# ###########################################################################
 
 
 question_res.index = l_order
@@ -116,10 +117,21 @@ clean_pivot = clean_pivot.sort_values(by=["Order"])#
 
 av_across_set = clean_pivot["Global Mean"].mean()*20
 
+#########################   Short Answer Grouping ##########################################
+#   Scrub HTML from the data export
+data["Question"] = data["Question"].apply(clean_HTML)
+
+#   Filter out the short answer questions
+short_answer_data = data[data["Answer"]==-2]
+
+#   Apply groupby, first by clinician and then by Question ID. 
+short_answer_sort = short_answer_data.sort_values(["Clinician_AD_ID","Question_ID"])
+
+
 wb = Workbook()
 s1 = wb["Sheet"]
 wb.remove(s1)
-
+    
 
 #   Create the stacked bar chart by clinician
 for i in range(0, len(clean_pivot.columns)-2):
@@ -204,10 +216,74 @@ for i in range(0, len(clean_pivot.columns)-2):
         ws1["A33"] = "Response Data"
         ws1["A33"].font = Font(bold=True)
         ws1.append(r)
-        
-##################################################################
-##     4                                                         #
-##     CONFIRM THAT THE FILE IS SAVING TO THE RIGHT LOCATION     #
-##################################################################
-wb.save(r"C:\Users\ARidding\Documents\Clevelands\ClevelandResults_Set1_2018-2019.xlsx")
+
+
+    ws1["A53"] = "Short Answer Question"
+    ws1["A53"].font = Font(bold=True)
+
+    #   FIRST SHORT ANSWER QUESTION
+    clinician_specific_comments = short_answer_sort[short_answer_sort["Clinician_AD_ID"]==temp_name]
+
+    #   set Question ID and Question to their own variables
+    question_ID = clinician_specific_comments.Question_ID.unique()
+    question_ID_1 = question_ID[1]
+
+    question_title = clinician_specific_comments.Question.unique()
+    ws1["A55"] = question_title[1]
+
+    clinician_specific_comments_1 = clinician_specific_comments[clinician_specific_comments["Question_ID"]==question_ID_1]
+    clinician_specific_comments_1 = clinician_specific_comments_1["Comments"].fillna("N/A")
+
+    for i in range(0, len(clinician_specific_comments_1)):
+        ws1["B" + str(56 + i)] = ws1.merge_cells("B"+ str(56 + i) +":D"+ str(56 + i))
+        ws1["A" + str(56 + i)] = i + 1
+        ws1["B" + str(56 + i)] = clinician_specific_comments_1.iloc[i]
+        if len(clinician_specific_comments_1.iloc[i]) > 170: 
+            ws1.row_dimensions[(56 + i)].height = float(50)
+            ws1["B" + str(56 + i)].alignment=Alignment(horizontal='general',
+                vertical='top',
+                text_rotation=0,
+                wrap_text=True,
+                shrink_to_fit=True)
+
+            ws1["A" + str(56 + i)].alignment=Alignment(horizontal='general',
+                vertical='center',
+                text_rotation=0,
+                wrap_text=True,
+                shrink_to_fit=True)
+
+
+
+
+    next_question = 57 + len(clinician_specific_comments_1)
+
+    ws1["A"+ str(next_question)] = question_title[0]
+    question_ID_2 = question_ID[0]
+    clinician_specific_comments_2 = clinician_specific_comments[clinician_specific_comments["Question_ID"]==question_ID_2]
+    clinician_specific_comments_2 = clinician_specific_comments_2["Comments"].fillna("N/A")
+
+    for i in range(0, len(clinician_specific_comments_2)):
+        ws1["B" + str(next_question + 1 + i)] = ws1.merge_cells("B"+ str(next_question + 1 + i) +":D"+ str(next_question + 1 + i))
+        ws1["A" + str(next_question + 1 + i)] = i + 1
+        ws1["B" + str(next_question + 1 + i)] = clinician_specific_comments_2.iloc[i]
+        if len(clinician_specific_comments_2.iloc[i]) > 170: 
+            ws1.row_dimensions[(next_question + 1 + i)].height = float(50)
+            ws1["B" +str(next_question + 1 + i) ].alignment=Alignment(horizontal='general',
+                vertical='top',
+                text_rotation=0,
+                wrap_text=True,
+                shrink_to_fit=True)
+            ws1["A" +str(next_question + 1 + i) ].alignment=Alignment(horizontal='general',
+                vertical='center',
+                text_rotation=0,
+                wrap_text=True,
+                shrink_to_fit=True)
+
+
+    
+# ##################################################################
+# ##     4                                                         #
+# ##     CONFIRM THAT THE FILE IS SAVING TO THE RIGHT LOCATION     #
+# ##################################################################
+wb.save(r"C:\Users\ARidding\Documents\Clevelands\ClevelandResults_Set1_2018-2019--ARTEST.xlsx")
 ##################################################################
