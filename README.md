@@ -12,3 +12,7 @@ Scripts to automate error-prone tasks and optimize data processing. These script
 ## [fin_month.py](https://github.com/AGWeb18/BusinessIntel/blob/master/fin_month.py)
 - Many times, human error is accountable for mistakes made when running simple reporting. 
 - This script automates the calculation of each of the financial metrics to ensure consistency. 
+
+
+##  [Scripts for Data Science](https://agweb18.github.io/)
+- Useful Pandas/Python snippets for data science which include snippets which speed up development speed. 
