@@ -2,7 +2,13 @@ import pandas as pd
 import os
 import glob
 
-file_path = r"//citrix3/OscarFileStorage/Anthony Reports/Accounting"
+#       Set Month
+month = "November"
+short_month = "Nov"
+
+file_path = r"//citrix3/OscarFileStorage/Anthony Reports/Accounting/" + short_month + "/"
+
+raw_report_path = r"C:\Users\ARidding\Documents\Financials\Nov\\" + month + "-FinancialReport"
 
 def newest_csv(path):
 	#	Create function to identify the newest file in directory
@@ -65,7 +71,6 @@ def radiology(df):
 	rad_reading_df = df.iloc[rad_reading, 3].sum()
 	return rad_taking_df, rad_reading_df
 
-
 #	Specific Location 
 location_data = pd.read_csv(newest_csv(file_path), nrows=2)
 specific_location = location_data.iloc[0, 1]
@@ -83,7 +88,7 @@ if specific_location == "All":
 
 	df_financial = pd.DataFrame.from_dict(d, orient="index")	
 
-	with open(r"C:\Users\ARidding\Documents\Financials\financial_working.csv", 'a') as f:
+	with open(r"C:\Users\ARidding\Documents\Financials\ " + month + "-FinancialReport.csv", 'a') as f:
 		df_financial.to_csv(f, header=False, mode='a') 
 
 
@@ -125,5 +130,5 @@ else:
 	df_financial = pd.DataFrame.from_dict(d, orient="index")
 
 
-	with open(r"C:\Users\ARidding\Documents\Financials\financial_working.csv", 'a') as f:
+	with open(r"C:\Users\ARidding\Documents\Financials\ " + month + "-FinancialReport.csv", 'a') as f:
 		df_financial.to_csv(f, header=False, mode='a') 
