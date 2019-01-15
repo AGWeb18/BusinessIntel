@@ -3,14 +3,14 @@ import glob
 import os
 
 #	Define the path to where the files are saved
-file_path = r"//citrix3/OscarFileStorage/Anthony Reports/Accounting"
+file_path = r"\\citrix3\OscarFileStorage\Anthony Reports\Accounting\Nov"
 #	Incorporate the month to differentiate between reports
-month = "October"
+month = "November"
 
 def newest_csv(path):
 	#	Create function to identify the newest file in directory
 	#	Utilize the created time
-	list_of_files = glob.glob(path + "/*.csv") # * means all if need specific format then *.csv
+	list_of_files = glob.glob(path + "/*.csv")
 	latest_file = max(list_of_files, key=os.path.getctime)
 	return latest_file
 
@@ -34,29 +34,34 @@ print(specific_location)
 #	Read file into dataframe
 raw_file = pd.read_csv(newest_csv(file_path), skiprows=4)
 
-#	Setup totals here, utilize functions
-write_off_total = write_off_amount(raw_file)
-uncollectible_total = bad_debt_amount(raw_file)
-leftover_amount = round(write_off_total - uncollectible_total, 2)
+try:
+#	Error handling to capture clinics which dont have any reported Write Offs. 
 
-#	Setup the name of the metrics
-name_leftover_amount = specific_location + "-Revenue Total"
+	#	Setup totals here, utilize functions
+	write_off_total = write_off_amount(raw_file)
+	uncollectible_total = bad_debt_amount(raw_file)
+	leftover_amount = round(write_off_total - uncollectible_total, 2)
 
-#	If the program reads "All", then write datafrom  with new data. 
-if specific_location == "All":
-	#	Setup Dataframe if all clinics
-	d = ({"Clinic A/R":[write_off_total],
-	"Bad Debt":	[uncollectible_total]})
+	#	Setup the name of the metrics
+	name_leftover_amount = specific_location + "-Revenue Total"
 
-	df_write_off = pd.DataFrame.from_dict(d, orient='index')
+	#	If the program reads "All", then write datafrom  with new data. 
+	if specific_location == "All":
+		#	Setup Dataframe if all clinics
+		d = ({"Clinic A/R":[write_off_total],
+		"Bad Debt":	[uncollectible_total]})
 
-	with open(r"C:\Users\ARidding\Documents\Financials\ " + month + "-df_write_off.csv", 'a') as f:
-		df_write_off.to_csv(f, header=False, mode='a')
+		df_write_off = pd.DataFrame.from_dict(d, orient='index')
 
-else:
-	print(leftover_amount)
-	d = ({specific_location + " Revenue Total": leftover_amount})
-	df_write_off = pd.DataFrame.from_dict(d, orient='index')
+		with open(r"C:\Users\ARidding\Documents\Financials\ " + month + "-df_write_off.csv", 'a') as f:
+			df_write_off.to_csv(f, header=False, mode='a')
 
-	with open(r"C:\Users\ARidding\Documents\Financials\ " + month + "-df_write_off.csv", 'a') as f:
-		df_write_off.to_csv(f, header=False, mode='a')
+	else:
+		print(leftover_amount)
+		d = ({specific_location + " Revenue Total": leftover_amount})
+		df_write_off = pd.DataFrame.from_dict(d, orient='index')
+
+		with open(r"C:\Users\ARidding\Documents\Financials\ " + month + "-df_write_off.csv", 'a') as f:
+			df_write_off.to_csv(f, header=False, mode='a')
+except:
+	print(specific_location + " has no invoices to report on")
